@@ -147,52 +147,55 @@
     }
 
     async function loadFile(filePath) {
-  fileBar.textContent = filePath;
-  container.innerHTML = `<div class="status-msg">Loading content...</div>`;
+      fileBar.textContent = filePath;
+      container.innerHTML = `<div class="status-msg">Loading content...</div>`;
 
-  const ext = filePath.split(".").pop().toLowerCase();
-  const rawUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${BRANCH}/${filePath}`;
+      const ext = filePath.split(".").pop().toLowerCase();
+      const rawUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${BRANCH}/${filePath}`;
 
-  // Render PDFs via Google Docs viewer to bypass iframe restrictions
-  if (ext === "pdf") {
-    const encodedUrl = encodeURIComponent(rawUrl);
-    container.innerHTML = `<iframe src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"></iframe>`;
-    return;
-  }
+      // Render PDFs via Google Docs viewer to bypass iframe restrictions
+      if (ext === "pdf") {
+        const encodedUrl = encodeURIComponent(rawUrl);
+        container.innerHTML = `<iframe src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"></iframe>`;
+        return;
+      }
 
-  // Render HTML via raw.githack.com (serves proper MIME types without X-Frame-Options)
-  if (ext === "html" || ext === "htm") {
-  try {
-    const res = await fetch(rawUrl);
-    const htmlText = await res.text();
-    const iframe = document.createElement("iframe");
-    iframe.srcdoc = htmlText;
-    iframe.sandbox = "allow-scripts"; // omit or adjust sandbox attributes depending on trust level
-    container.innerHTML = "";
-    container.appendChild(iframe);
-  } catch (err) {
-    container.innerHTML = `<div class="status-msg" style="color:#f85149;">Unable to display HTML: ${err.message}</div>`;
-  }
-  return;
-}
+      // Render HTML inside a sandboxed iframe using srcdoc
+      if (ext === "html" || ext === "htm") {
+        try {
+          const res = await fetch(rawUrl);
+          if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
+          const htmlText = await res.text();
 
-  // Fetch text/code files directly (CORS is allowed for raw text fetches)
-  try {
-    const res = await fetch(rawUrl);
-    if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
-    const text = await res.text();
+          const iframe = document.createElement("iframe");
+          iframe.sandbox = "allow-scripts allow-forms allow-same-origin";
+          iframe.srcdoc = htmlText;
 
-    const pre = document.createElement("pre");
-    const code = document.createElement("code");
-    code.textContent = text;
-    pre.appendChild(code);
-    container.innerHTML = "";
-    container.appendChild(pre);
-    hljs.highlightElement(code);
-  } catch (err) {
-    container.innerHTML = `<div class="status-msg" style="color:#f85149;">Unable to display file: ${err.message}</div>`;
-  }
-}
+          container.innerHTML = "";
+          container.appendChild(iframe);
+        } catch (err) {
+          container.innerHTML = `<div class="status-msg" style="color:#f85149;">Unable to display HTML: ${err.message}</div>`;
+        }
+        return;
+      }
+
+      // Fetch text/code files directly (CORS is allowed for raw text fetches)
+      try {
+        const res = await fetch(rawUrl);
+        if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
+        const text = await res.text();
+
+        const pre = document.createElement("pre");
+        const code = document.createElement("code");
+        code.textContent = text;
+        pre.appendChild(code);
+        container.innerHTML = "";
+        container.appendChild(pre);
+        hljs.highlightElement(code);
+      } catch (err) {
+        container.innerHTML = `<div class="status-msg" style="color:#f85149;">Unable to display file: ${err.message}</div>`;
+      }
+    }
 
     loadTree();
   </script>

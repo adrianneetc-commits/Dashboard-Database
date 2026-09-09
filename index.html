@@ -162,10 +162,19 @@
 
   // Render HTML via raw.githack.com (serves proper MIME types without X-Frame-Options)
   if (ext === "html" || ext === "htm") {
-    const githackUrl = `https://raw.githack.com/${GITHUB_OWNER}/${GITHUB_REPO}/${BRANCH}/${filePath}`;
-    container.innerHTML = `<iframe src="${githackUrl}"></iframe>`;
-    return;
+  try {
+    const res = await fetch(rawUrl);
+    const htmlText = await res.text();
+    const iframe = document.createElement("iframe");
+    iframe.srcdoc = htmlText;
+    iframe.sandbox = "allow-scripts"; // omit or adjust sandbox attributes depending on trust level
+    container.innerHTML = "";
+    container.appendChild(iframe);
+  } catch (err) {
+    container.innerHTML = `<div class="status-msg" style="color:#f85149;">Unable to display HTML: ${err.message}</div>`;
   }
+  return;
+}
 
   // Fetch text/code files directly (CORS is allowed for raw text fetches)
   try {
